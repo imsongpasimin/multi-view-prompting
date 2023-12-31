@@ -130,7 +130,7 @@ def order_scores_function(quad_list, cur_sent, model, tokenizer, device, task):
         all_orders_list.append(cur_order)
         cur_target = []
         for each_q in quad_list:
-            cur_target.append(each_q[cur_order][0])
+            cur_target.append(each_q[cur_order][0])    # "at, ac, ot, sp"
 
         all_inputs.append(cur_sent)
         all_targets.append(" ".join(cur_target))
@@ -146,9 +146,9 @@ def order_scores_function(quad_list, cur_sent, model, tokenizer, device, task):
                                                    truncation=True,
                                                    return_tensors="pt")
 
-    target_ids = tokenized_target["input_ids"].to(device)
+    target_ids = tokenized_target["input_ids"].to(device)  
 
-    target_ids[target_ids[:, :] == tokenizer.pad_token_id] = -100
+    target_ids[target_ids[:, :] == tokenizer.pad_token_id] = -100       # Except padding loss for y
     outputs = model(
         input_ids=tokenized_input["input_ids"].to(device),
         attention_mask=tokenized_input["attention_mask"].to(device),
@@ -198,17 +198,17 @@ def choose_best_order_global(sents, labels, model, tokenizer, device, task):
             for each in x:
                 order = []
                 content = []
-                for e in each:
-                    order.append(e[0:4])
-                    content.append(e[4:])
+                for e in each:    # each: ([A] at, [O] ot, ...)
+                    order.append(e[0:4])    # special tokens
+                    content.append(e[4:])   # values
                 order_name = " ".join(order)
                 content = " ".join(content)
                 permute_object[order_name] = [content, " ".join(each)]
 
-            quad_list.append(permute_object)
+            quad_list.append(permute_object)    # {"[A] [C] [O] [S]" : ["at ac ot sp", "[A] at [C] ac [O] ot [S] sp", ...}
 
         order_scores = order_scores_function(quad_list, sent, model, tokenizer,
-                                             device, task)
+                                             device, task)    # 문장 하나 단위, 레이블이 여러 쌍일 수도 있으므로 list 형태의 quad_list
         for e in order_scores:
             index = all_orders_list.index(e)
             scores[index] += order_scores[e]['entropy']
@@ -219,7 +219,7 @@ def choose_best_order_global(sents, labels, model, tokenizer, device, task):
         returned_orders.append(all_orders_list[i])
 
     print("Orders:", returned_orders)
-    return returned_orders
+    return returned_orders    # 모든 token 순열을 entropy 점수 순으로 나열
 
 
 def parse_aste_tuple(_tuple, sent):
